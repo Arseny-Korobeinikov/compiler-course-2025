@@ -29,24 +29,20 @@ public:
     llvm::StringMap<int64_t> globalCallCounts;
     llvm::SmallVector<CallOpInterface> callOpsCache;
 
-    module.walk([&](Operation *op) {
-      if (auto call = dyn_cast<CallOpInterface>(op)) {
-        if (auto calleeAttr =
-                call.getCallableForCallee().dyn_cast<SymbolRefAttr>()) {
-          StringRef calleeName = calleeAttr.getRootReference().getValue();
-          globalCallCounts[calleeName]++;
-          callOpsCache.push_back(call);
-        }
+    module.walk([&](CallOpInterface call) {
+      if (auto calleeAttr =
+              call.getCallableForCallee().dyn_cast<SymbolRefAttr>()) {
+        StringRef calleeName = calleeAttr.getRootReference().getValue();
+        globalCallCounts[calleeName]++;
+        callOpsCache.push_back(call);
       }
     });
 
     for (CallOpInterface call : callOpsCache) {
-      if (auto calleeAttr =
-              call.getCallableForCallee().dyn_cast<SymbolRefAttr>()) {
-        StringRef calleeName = calleeAttr.getRootReference().getValue();
-        int64_t totalCalls = globalCallCounts.lookup(calleeName);
-        call->setAttr("invoke_total", builder.getI64IntegerAttr(totalCalls));
-      }
+      auto calleeAttr = call.getCallableForCallee().dyn_cast<SymbolRefAttr>();
+      StringRef calleeName = calleeAttr.getRootReference().getValue();
+      int64_t totalCalls = globalCallCounts.lookup(calleeName);
+      call->setAttr("invoke_total", builder.getI64IntegerAttr(totalCalls));
     }
   }
 };
